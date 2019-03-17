@@ -437,9 +437,20 @@ Ansible is smart enough to know that the `copy` module should look into the `fil
         presistent: yes
     ```
 
+## Ansible Galaxy
 
+Ansible Galaxy refers to the [Galaxy website](https://galaxy.ansible.com/) where users can share roles, and to a command line tool `ansible-galaxy` for installing, creating, and managing roles. This is just a listing and search service, the actual role itself is downloaded from [GitHub](https://github.com/).
 
+### Install Roles
 
+```bash
+$ ansible-galaxy install geerlingguy.java # installs into ~/.ansible/roles
+```
 
+This can have the result of having a more complicated role than what we would normally write ourselves. We may find it to be easier to write a role that's narrowly tailored to the work that we want, or to find a role and then figure out how to customize it so we can use it correctly.
 
+The information in the `meta` subdirectory is used to display information on the role's Galaxy webpage.
 
+### Where Ansible Looks for Roles
+
+Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separated list of paths that tell Ansible where to look for roles. This has a default value of `~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles`.
