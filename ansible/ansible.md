@@ -454,3 +454,30 @@ The information in the `meta` subdirectory is used to display information on the
 ### Where Ansible Looks for Roles
 
 Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separated list of paths that tell Ansible where to look for roles. This has a default value of `~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles`.
+
+## Using Role Handlers, Files, and Templates
+
+### Rules for Handlers
+
+* Only run if *notified*
+* Run at the *end of play* (unless flushed)
+* Match by *name*
+* Roles can reference own or *dependent* handlers
+
+### Rules for Files and Templates
+
+* Should usually be kept in own role
+
+* Subdirectories inside files and templates are OK
+
+* Search for relative paths (Ansible will look in different places):
+
+  |             Copy              |             Template              |
+  | :---------------------------: | :-------------------------------: |
+  |   `<role dir>/files/<path>`   |   `<role dir>/templates/<path>`   |
+  |   `<role dir>/tasks/<path>`   |     `<role dir>/tasks/<path>`     |
+  |      `<role dir>/<path>`      |        `<role dir>/<path>`        |
+  | `<playbook dir>/files/<path>` | `<playbook dir>/templates/<path>` |
+  |    `<playbook dir>/<path>`    |      `<playbook dir>/<path>`      |
+
+  
