@@ -460,8 +460,11 @@ Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separate
 ### Rules for Handlers
 
 * Only run if *notified*
+
 * Run at the *end of play* (unless flushed)
+
 * Match by *name*
+
 * Roles can reference own or *dependent* handlers
 
 ### Rules for Files and Templates
@@ -470,7 +473,7 @@ Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separate
 
 * Subdirectories inside files and templates are OK
 
-* Search for relative paths (Ansible will look in different places):
+* Search for relative paths (Ansible will look in different places in a particular order):
 
   |             Copy              |             Template              |
   | :---------------------------: | :-------------------------------: |
@@ -480,4 +483,45 @@ Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separate
   | `<playbook dir>/files/<path>` | `<playbook dir>/templates/<path>` |
   |    `<playbook dir>/<path>`    |      `<playbook dir>/<path>`      |
 
-  
+## Role Dependencies
+
+Notice the playbook below only lists the `tomcat` role. The dependencies for `tomcat` will be listed in `roles/tomcat/meta/main.yml`. The `meta` subdirectory is used for providing metadata or information about the role.
+
+```yaml
+# File playbook.yml
+---
+- hosts: all
+  become: true
+  roles:
+    - tomcat
+```
+
+Examples:
+
+1. In the `meta` subdirectory a `main.yml` file is used to list another role that `tomcat` is dependent on.
+
+   ```yaml
+   # File roles/tomcat/meta/main.yml
+   ---
+   dependencies:
+     - java # the java role will run prior to tomcat
+   ```
+
+2. Provide a parameter to override a default variable `java_package` defined in `roles/java/defaults/main.yml`.
+
+   ```yaml
+   # File roles/tomcat/meta/main.yml
+   ---
+   dependencies:
+     - { role: java, java_package: openjdk-9-jre }
+   ```
+
+3. If multiple roles express they have a dependency for the same role with the same parameters, the role they are dependent on will be ran once. In this case the parameters are different so the role we be ran twice.
+
+   ```yaml
+   # File roles/tomcat/meta/main.yml
+   ---
+   dependencies:
+     - { role: java, java_package: openjdk-8-jre }
+     - { role: java, java_package: openjdk-9-jre }
+   ```
