@@ -20,7 +20,7 @@ Add the Ansible user to the host. In this case, the user will be `evan`.
 
 ```bash
 $ sudo adduser evan
-$ sudo adduser evan sudo # adds the user to the sudo group
+$ sudo adduser evan sudo # adds an existing user to the sudo group
 ```
 
 Running `visudo -f <file>` or `visudo --file=<file>` will allow you to specify an alternate sudoers file rather than the default `/etc/sudoers`.
