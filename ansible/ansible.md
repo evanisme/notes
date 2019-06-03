@@ -697,3 +697,39 @@ Examples:
   {# result 172.31.0.21,172.31.0.22 #}
   ...
   ```
+
+### Defining Reusable Blocks and Inheritance
+
+```jinja2
+# File roles/haproxy/templates/haproxy.base.cfg
+...
+defaults
+    log     global
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+{% block defaults %}
+{% endblock %}
+...
+```
+
+```jinja2
+# File roles/haproxy/templates/haproxy.http.cfg
+{# tells Jinja2 to fetch and inherit or extend from a parent template #}
+{% extends 'haproxy.base.cfg' %}
+{% block defaults %}
+    mode    http
+    option  httplog
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+{% endblock %}
+```
+
+
+
