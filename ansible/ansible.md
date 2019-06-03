@@ -77,7 +77,7 @@ The default inventory file location is `/etc/ansible/hosts`.
 
 ```ini
 [database]
-database01 
+database01
 
 [dotcms]
 dotcms01
@@ -498,30 +498,202 @@ Notice the playbook below only lists the `tomcat` role. The dependencies for `to
 
 Examples:
 
-1. In the `meta` subdirectory a `main.yml` file is used to list another role that `tomcat` is dependent on.
+* In the `meta` subdirectory a `main.yml` file is used to list another role that `tomcat` is dependent on
+
+  ```yaml
+  # File roles/tomcat/meta/main.yml
+  ---
+  dependencies:
+    - java # the java role will run prior to tomcat
+  ```
+
+* Provide a parameter to override a default variable `java_package` defined in `roles/java/defaults/main.yml`
+
+  ```yaml
+  # File roles/tomcat/meta/main.yml
+  ---
+  dependencies:
+    - { role: java, java_package: openjdk-9-jre }
+  ```
+
+* In this case the parameters are different so the role we be ran twice
+
+  ```yaml
+  # File roles/tomcat/meta/main.yml
+  ---
+  dependencies:
+    - { role: java, java_package: openjdk-8-jre }
+    - { role: java, java_package: openjdk-9-jre }
+  ```
+
+## Using the Template Library
+
+The template module will take a source file and add content to the defined variables. The resulting file will be compared to the file on the remote system to determine if it needs to be updated.
+
+When Ansible creates templates it relies on a popular Python library called [Jinja2](http://jinja.pocoo.org/). This library does the templating work while Ansible is responsible for updating the file and file attributes on the remote system.
+
+### Template Flow Control
+
+```yaml
+# File roles/haproxy/defaults/main.yml
+---
+haproxy_listen_address: 0.0.0.0
+haproxy_listen_port: 80
+haproxy_stats: True
+```
+
+```jinja2
+# File roles/haproxy/templates/haproxy.cfg
+...
+frontend haproxy
+    {# variable replacement #}
+    bind {{ haproxy_listen_address }}:{{ haproxy_listen_port }}
+    mode http
+    default_backend dotcms
+{# control statement #}
+{% if haproxy_stats %}
+    stats enable
+    stats uri /haproxy?stats
+    stats realm HAProxy Statistics
+    stats auth admin:admin
+{% endif %}
+    balance roundrobin
+    option httpclose
+    option forwardfor
+...
+```
+
+### Repeated Configuration Content
+
+Examples:
+
+* Using a list
 
    ```yaml
-   # File roles/tomcat/meta/main.yml
-   ---
-   dependencies:
-     - java # the java role will run prior to tomcat
+   # File roles/haproxy/defaults/main.yml
+   ...
+   haproxy_backends:
+     - 'server dotcms01 172.31.0.21:8080 check' # hyphen indicates that this is a list
+     - 'server dotcms02 172.31.0.22:8080 check'
+   ...
    ```
 
-2. Provide a parameter to override a default variable `java_package` defined in `roles/java/defaults/main.yml`.
+   ```jinja2
+   # File roles/haproxy/templates/haproxy.cfg
+   ...
+   backend dotcms
+   {% for backend in haproxy_backends %}
+       {{ backend }}
+   {% endfor %}
+   ...
+   ```
+
+* Using a dictionary
 
    ```yaml
-   # File roles/tomcat/meta/main.yml
-   ---
-   dependencies:
-     - { role: java, java_package: openjdk-9-jre }
+   # File roles/haproxy/defaults/main.yml
+   ...
+   haproxy_backends:
+     dotcms01:
+       ip: 172.31.0.21
+     dotcms02:
+       ip: 172.31.0.22
+   ...
    ```
 
-3. If multiple roles express they have a dependency for the same role with the same parameters, the role they are dependent on will be ran once. In this case the parameters are different so the role we be ran twice.
-
-   ```yaml
-   # File roles/tomcat/meta/main.yml
-   ---
-   dependencies:
-     - { role: java, java_package: openjdk-8-jre }
-     - { role: java, java_package: openjdk-9-jre }
+   ```jinja2
+   # File roles/haproxy/templates/haproxy.cfg
+   ...
+   backend dotcms
+   {% for key, value in haproxy_backends.iteritems() %}
+       server {{ key }} {{ value.ip }}:8080 check
+   {% endfor %}
+   ...
    ```
+
+* Using a macro
+
+   ```jinja2
+   # File roles/haproxy/templates/backend.j2
+
+   {% macro backend(name, ip, port=8080) -%}
+       server {{ name }} {{ ip }}:{{ port }} check
+   {%- endmacro %}
+   ```
+
+     ```jinja2
+   # File roles/haproxy/templates/haproxy.cfg
+   ...
+   {# needs to be imported if using a separate file #}
+   {% import 'backend.j2' as backend %}
+   backend dotcms
+   {% for key, value in haproxy_backends.iteritems() %}
+   backend(key, value.ip)
+   {% endfor %}
+   ...
+     ```
+
+### Using Defaults and Filters
+
+Examples:
+
+* To remove the requirement of a variable being defined the `default` filter can be used to supply a default value
+
+  ```jinja2
+  # File roles/haproxy/templates/haproxy.cfg
+  ...
+  frontend haproxy
+      {# variable replacement #}
+      bind {{ haproxy_listen_address }}:{{ haproxy_listen_port|default('80') }}
+      mode http
+      default_backend dotcms
+  {# control statement #}
+  {% if haproxy_stats|default(True) %}
+      stats enable
+      stats uri /haproxy?stats
+      stats realm HAProxy Statistics
+      stats auth admin:admin
+  {% endif %}
+  ...
+  ```
+
+* Use `join` to concatenate strings with an optional parameter
+
+  ```yaml
+  # File roles/<role>/defaults/main.yml
+  ...
+  servers:
+    - server01
+    - server02
+    - server03
+  ...
+  ```
+
+  ```jinja2
+  # File roles/<role>/templates/<template>
+  ...
+  {{ servers|join(',') }}
+  {# result server01,server02,server03 #}
+  ...
+  ```
+
+* Use `map` to apply a filter on a sequence of objects or look up an attribute to return a list of values
+
+  ```yaml
+  # File roles/<role>/defaults/main.yml
+  ...
+  haproxy_backends:
+    dotcms01:
+      ip: 172.31.0.21
+    dotcms02:
+      ip: 172.31.0.22
+  ...
+  ```
+
+  ```jinja2
+  # File roles/<role>/templates/<template>
+  ...
+  {{ haproxy_backends.values()|map(attribute='ip')|join(',') }}
+  {# result 172.31.0.21,172.31.0.22 #}
+  ...
+  ```
