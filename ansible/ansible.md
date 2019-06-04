@@ -485,46 +485,23 @@ Ansible will use the `ANSIBLE_ROLES_PATH` environment variable, a colon separate
 
 ## Role Dependencies
 
-Notice the playbook below only lists the `tomcat` role. The dependencies for `tomcat` will be listed in `roles/tomcat/meta/main.yml`. The `meta` subdirectory is used for providing metadata or information about the role.
+The dependencies for a role will be listed in `roles/<role>/meta/main.yml`. The `meta` subdirectory is used for providing metadata or information about the role.
 
 ```yaml
-# File playbook.yml
+# File roles/tomcat/meta/main.yml
 ---
-- hosts: all
-  become: true
-  roles:
-    - tomcat
+dependencies:
+  - java # the java role will run prior to tomcat
 ```
 
-Examples:
+Parameters can be provided to override default variables defined in `roles/<role>/defaults/main.yml`.
 
-* In the `meta` subdirectory a `main.yml` file is used to list another role that `tomcat` is dependent on
-
-  ```yaml
-  # File roles/tomcat/meta/main.yml
-  ---
-  dependencies:
-    - java # the java role will run prior to tomcat
-  ```
-
-* Provide a parameter to override a default variable `java_package` defined in `roles/java/defaults/main.yml`
-
-  ```yaml
-  # File roles/tomcat/meta/main.yml
-  ---
-  dependencies:
-    - { role: java, java_package: openjdk-9-jre }
-  ```
-
-* In this case the parameters are different so the role we be ran twice
-
-  ```yaml
-  # File roles/tomcat/meta/main.yml
-  ---
-  dependencies:
-    - { role: java, java_package: openjdk-8-jre }
-    - { role: java, java_package: openjdk-9-jre }
-  ```
+```yaml
+# File roles/tomcat/meta/main.yml
+---
+dependencies:
+  - { role: java, java_package: openjdk-9-jre }
+```
 
 ## Using the Template Library
 
@@ -564,8 +541,6 @@ frontend haproxy
 ```
 
 ### Repeated Configuration Content
-
-Examples:
 
 * Using a list
 
@@ -635,8 +610,6 @@ Examples:
 
 ### Using Defaults and Filters
 
-Examples:
-
 * To remove the requirement of a variable being defined the `default` filter can be used to supply a default value
 
   ```jinja2
@@ -700,6 +673,8 @@ Examples:
 
 ### Defining Reusable Blocks and Inheritance
 
+A child template can extend another template in order to reuse configuration content.
+
 ```jinja2
 # File roles/haproxy/templates/haproxy.base.cfg
 ...
@@ -730,6 +705,10 @@ defaults
     errorfile 504 /etc/haproxy/errors/504.http
 {% endblock %}
 ```
+
+## Maintaining Roles and Templates with Variables
+
+### Using Variables for All Roles
 
 
 
